@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#040b16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Tablero · Jugador</title>
+<style>
+[hidden]{display:none !important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#040b16;color:#edf2ff;font:16px/1.4 system-ui,sans-serif;user-select:none;-webkit-user-select:none}
+button,input{font:inherit;color:inherit}
+button{background:#1e293b;border:1px solid rgba(148,163,184,.35);border-radius:12px;padding:10px 14px;min-height:44px}
+button.pri{background:linear-gradient(135deg,#7c3aed,#22d3ee);border:0;font-weight:700}
+button.ok{background:#15803d;border:0;font-weight:700}
+button:disabled{opacity:.4}
+input,select{width:100%;background:#0f172a;border:1px solid rgba(148,163,184,.4);border-radius:12px;padding:12px;margin-bottom:10px;user-select:text;-webkit-user-select:text}
+h3{margin:0 0 8px}
+.muted{color:#b6c2d9;font-size:13px}
+#start{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:24px;max-width:460px;margin:auto}
+#start h1{margin:0 0 4px;font-size:26px}
+#msg{min-height:22px;color:#fbbf24;margin:6px 0}
+.col{display:flex;flex-direction:column;gap:8px}
+#stage{position:fixed;left:0;right:0;top:0;bottom:calc(56px + env(safe-area-inset-bottom));overflow:hidden;touch-action:none;background:#0f172a}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;background:#0f172a;background-size:100% 100%;background-repeat:no-repeat}
+#world>*{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+#grid{background-image:linear-gradient(rgba(255,255,255,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.14) 1px,transparent 1px);background-size:50px 50px}
+.obj{position:absolute;transform-origin:center}.obj img{width:100%;height:100%;display:block}
+.tok{position:absolute;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.tok.own{pointer-events:auto;touch-action:none}
+.av{width:calc(100% - 10px);height:calc(100% - 10px);display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid rgba(255,255,255,.55);background-size:cover;background-position:center}
+.tok.own .av{border-color:#a78bfa;box-shadow:0 0 12px #a78bfa}
+.tok.turn{outline:3px solid #22c55e;outline-offset:2px;animation:p 1.2s infinite}
+@keyframes p{50%{box-shadow:0 0 22px #22c55e}}
+.bd{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:calc(14px*var(--k,1));white-space:nowrap;filter:drop-shadow(0 1px 2px #000)}
+.nm{position:absolute;top:100%;left:50%;transform:translateX(-50%);font-size:calc(11px*var(--k,1));white-space:nowrap;text-shadow:0 1px 3px #000,0 0 3px #000}
+#banner{position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top));padding:10px 14px;border-radius:14px;background:rgba(15,23,42,.92);border:1px solid rgba(148,163,184,.4);text-align:center;font-weight:700;display:none;z-index:20}
+#banner.turn{background:#15803d;border:0}#banner.bad{background:#b91c1c;border:0}
+#panel{position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom));max-height:68vh;overflow:auto;background:rgba(11,20,35,.97);border-top:1px solid rgba(148,163,184,.35);border-radius:18px 18px 0 0;padding:14px;touch-action:pan-y;z-index:10}
+#tabs{position:fixed;left:0;right:0;bottom:0;height:calc(56px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);display:flex;background:#0b1423;border-top:1px solid rgba(148,163,184,.3);z-index:11}
+#tabs button{flex:1;border:0;border-radius:0;background:none;min-height:56px;font-size:14px}
+#tabs button.on{color:#22d3ee;font-weight:800}
+.row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(148,163,184,.15)}
+.row>*:first-child{flex:1}
+.grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.pcard{--c:18px;position:relative;width:min(70vw,260px);aspect-ratio:3/4;margin:4px auto 0;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55))}
+.pcard-f,.pcard-f::before,.pcard-f::after,.pcard-a,.pplate,.pplate>div{clip-path:polygon(var(--c) 0, calc(100% - var(--c)) 0, 100% var(--c), 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, var(--c) 100%, 0 calc(100% - var(--c)), 0 var(--c))}
+.pcard-f{position:absolute;inset:0;background:linear-gradient(135deg,#f3dc9b,#b8892f 35%,#f7e7b4 55%,#9c7426)}
+.pcard-f::before,.pcard-f::after{content:'';position:absolute}
+.pcard-f::before{inset:3px;background:#20180c}
+.pcard-f::after{inset:5px;background:linear-gradient(135deg,#e9cf86,#a57c2c)}
+.pcard-a{position:absolute;inset:6px;background:#0b1426 center/cover no-repeat}
+.pcard.free .pcard-f{display:none}
+.pcard.free .pcard-a{inset:0;clip-path:none;background-color:transparent;background-size:contain}
+.pplate{--c:10px;position:relative;z-index:1;width:min(76vw,284px);margin:-20px auto 12px;padding:2px;background:linear-gradient(135deg,#f3dc9b,#9c7426 50%,#f3dc9b)}
+.pplate>div{--c:9px;padding:7px 12px 8px;text-align:center;background:linear-gradient(#2a1f10,#140f08);display:flex;flex-direction:column;gap:2px}
+.pplate b{font:700 20px Georgia,'Times New Roman',serif;letter-spacing:.5px;color:#f7e7b4}
+.pplate span{font-size:12px;color:#d6c39a}
+.stat{text-align:center;padding:8px 4px}.stat b{display:block;font-size:20px}
+.tn{padding:10px;border:1px solid rgba(148,163,184,.25);border-radius:12px;margin-bottom:6px;display:flex;gap:10px;align-items:center}
+.tn.cur{border-color:#22c55e;background:rgba(34,197,94,.15)}.tn.out{opacity:.45}.tn b.i{min-width:30px;text-align:center}
+.dice{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dice button{min-height:64px;font-size:20px;font-weight:800}
+.d20{display:block;width:150px;height:150px;margin:12px auto 8px;border-radius:50%;font-size:34px;font-weight:900;background:radial-gradient(circle at 35% 30%,#a78bfa,#7c3aed 55%,#4c1d95);border:3px solid #c4b5fd;box-shadow:0 8px 24px rgba(124,58,237,.45)}
+.d20 small{display:block;font-size:16px;font-weight:700;opacity:.9}
+.modrow{display:flex;align-items:center;justify-content:center;gap:12px;margin:4px 0 12px}
+.modrow button{min-width:64px;min-height:56px;font-size:26px;font-weight:800}
+.modrow .mv{min-width:96px;font-size:22px;background:#0f172a}
+.mine{margin:8px 0;padding:10px 12px;border-radius:12px;background:rgba(124,58,237,.18);border:1px solid rgba(167,139,250,.5);display:flex;justify-content:space-between;align-items:center}
+.mine b{font-size:28px}
+.busy .dice button,.busy .d20{opacity:.5}
+.chip{font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(124,58,237,.35);color:#ddd6fe;margin-left:6px}
+.gl{padding:10px 0;border-bottom:1px solid rgba(148,163,184,.2)}.gl img{display:block;width:100%;max-width:240px;border-radius:12px;margin:8px 0}
+.gtx{color:#e2e8f0;font-size:15px;margin-top:4px;word-break:break-word;user-select:text;-webkit-user-select:text}
+.big{font-size:44px;font-weight:800;text-align:center;line-height:1.1}
+</style>
+</head>
+<body>
+
+<div id="start">
+  <h1>Tablero de Campaña</h1>
+  <div class="muted">Entra a la partida de tu DM desde el celular.</div>
+  <div id="form" class="col" style="margin-top:14px">
+    <input id="name" placeholder="Tu nombre" maxlength="24" autocomplete="nickname">
+    <input id="code" placeholder="Código de sala (6 letras)" maxlength="6" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
+    <button id="go" class="pri">Entrar a la partida</button>
+  </div>
+  <div id="pick" class="col" hidden></div>
+  <div id="msg"></div>
+  <div class="muted">Necesitas internet. El DM debe haber creado la sala en su app («Online» → «Crear sala»).</div>
+</div>
+
+<div id="app" hidden>
+  <div id="stage"><div id="world"><div id="objs"></div><div id="grid"></div><img id="fog" alt=""><div id="toks"></div></div></div>
+  <div id="banner"></div>
+  <div id="panel" hidden></div>
+  <nav id="tabs">
+    <button data-t="map" class="on">🗺 Mapa</button>
+    <button data-t="turns">⚔ Turnos</button>
+    <button data-t="sheet">📜 Hoja</button>
+    <button data-t="dice">🎲 Dados</button>
+    <button data-t="gloss">📖 Libro</button>
+  </nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="comun.js"></script>   <!-- código compartido con la app de PC: se sube junto a index.html -->
+<script>
+if (!window.TDC) { document.body.innerHTML = '<div style="padding:24px;font:16px system-ui;color:#fbbf24">Falta el archivo comun.js. Sube la carpeta "jugador" completa (index.html y comun.js).</div>'; throw new Error('comun.js no encontrado'); }
+// Datos y reglas compartidos con la app de PC (jugador/comun.js): protocolo, atributos, estados, objetos predefinidos, habilidades...
+const { PROTO, PREFIX: PFX, ICE, PRESET_URLS: PRESETS, STAT_ES, STAT_KEYS: STATS, esc, mod, fm, clamp } = TDC;
+const $ = id => document.getElementById(id);
+const ls = { get: k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+let peer = null, conn = null, me = null, tab = 'map', lastBg = null, lastCur = null, bannerT = null, hpT = null;
+let G = TDC.GRID_DEFAULT;   // tamaño de casilla (lo manda el DM)
+const S = { char: null, tokens: [], objects: [], lib: [], view: { gridOn: true, fogOn: false }, rolls: [], show: null, turns: null, names: {} };
+const W = { w: 1280, h: 720 }, cam = { x: 0, y: 0, s: 0.8 };
+
+$('name').value = ls.get('tdcm_name'); $('code').value = ls.get('tdcm_code');
+let badv = false;
+let info = null, retry = 0, retryT = null, hadInit = false, reclaim = 0;
+const MAXRETRY = 20;   // intentos de reconexión (cada 3 s)
+const say = t => { $('msg').textContent = t || ''; };
+const send = m => { try { conn && conn.send(m); } catch (e) {} };
+
+/* ---------- Conexión ---------- */
+$('go').onclick = () => {
+  const name = $('name').value.trim() || 'Jugador', code = $('code').value.trim().toUpperCase();
+  if (code.length < 4) return say('Escribe el código de sala que te dio el DM.');
+  ls.set('tdcm_name', name); ls.set('tdcm_code', code);
+  if (!window.Peer) return say('No se pudo cargar PeerJS. Revisa tu internet.');
+  badv = false; retry = 0; hadInit = false; reclaim = 0; clearTimeout(retryT);
+  info = { name, code };
+  say('Conectando…'); $('go').disabled = true;
+  connect();
+};
+// Un intento de conexión. Si ya estabas dentro y se corta, se repite solo (ver lost).
+function connect() {
+  const isRetry = retry > 0;
+  try { if (peer) peer.destroy(); } catch (e) {}
+  const pr = new Peer(undefined, { config: ICE });
+  peer = pr;
+  let dead = false, opened = false;
+  const gone = () => { if (dead) return; dead = true; clearTimeout(to); if (badv || pr !== peer) return; lost(); };
+  const to = setTimeout(() => {
+    if (opened || dead) return;
+    if (isRetry) gone(); else { dead = true; say('No se pudo conectar. Revisa el código y tu internet.'); $('go').disabled = false; }
+  }, isRetry ? 15000 : 20000);
+  pr.on('open', () => {
+    conn = pr.connect(PFX + info.code, { reliable: true });
+    conn.on('open', () => { opened = true; clearTimeout(to); retry = 0; send({ type: 'hello', name: info.name, v: PROTO }); });
+    conn.on('data', onMsg);
+    conn.on('close', gone);
+  });
+  pr.on('error', e => {
+    clearTimeout(to);
+    if (badv || pr !== peer) return;
+    if (isRetry || hadInit) return gone();   // ya estabas dentro: se sigue intentando
+    if (dead) return; dead = true;
+    say(e.type === 'peer-unavailable' ? 'No existe esa sala. Revisa el código.' : 'Error de red: ' + e.type);
+    $('go').disabled = false;
+  });
+}
+function lost() {
+  if (!info || retry >= MAXRETRY) { banner('Se perdió la conexión con el DM. <button onclick="location.reload()">Reconectar</button>', 'bad', 0); return; }
+  retry++;
+  banner('Se perdió la conexión. Reconectando… (' + retry + '/' + MAXRETRY + ')', 'bad', 0);
+  clearTimeout(retryT); retryT = setTimeout(connect, 3000);
+}
+
+/* ---------- Mensajes del DM ---------- */
+const assets = {};   // imágenes recibidas por referencia ("@a12"): el DM manda cada imagen una sola vez
+function unpack(m) { TDC.unpackAssets(m, assets); }
+function onMsg(m) {
+  if (!m || typeof m !== 'object') return;
+  unpack(m);
+  if (m.type === 'badversion' || (m.type === 'roster' && m.v !== PROTO)) {
+    badv = true;
+    say('Esta página (versión ' + PROTO + ') no coincide con la app del DM (versión ' + (m.v == null ? 'anterior' : m.v) + '). Pídele al DM el enlace actualizado o que use la misma versión.');
+    $('go').disabled = false;
+    try { conn.close(); } catch (e) {} try { peer.destroy(); } catch (e) {}
+    return;
+  }
+  if (m.type === 'full') {
+    badv = true; clearTimeout(retryT); info = null;
+    say('La sala del DM está llena. Pídele que cierre alguna conexión.'); $('go').disabled = false;
+    $('start').hidden = false; $('app').hidden = true; $('form').hidden = false; $('pick').hidden = true;
+    try { conn.close(); } catch (e) {} try { peer.destroy(); } catch (e) {}
+    return;
+  }
+  if (m.type === 'roster') {
+    const chars = m.chars || [];
+    if (hadInit) {   // reconexión: se recupera el mismo personaje (o el rol de observador) sin preguntar
+      const mine = me && chars.find(c => c.id === me);
+      if (!me) { send({ type: 'claim', charId: null }); return; }
+      if (mine && !mine.taken) { reclaim = 0; send({ type: 'claim', charId: me }); return; }
+      if (mine && mine.taken && reclaim < 6) {   // el DM aún no notó que se cortó la anterior: se espera un momento
+        reclaim++; const c0 = conn;
+        setTimeout(() => { if (c0 === conn && info) send({ type: 'hello', name: info.name, v: PROTO }); }, 2000);
+        return;
+      }
+      hadInit = false; $('start').hidden = false; $('app').hidden = true;   // no se pudo recuperar: se elige de nuevo
+    }
+    return choose(chars);
+  }
+  if (m.type === 'init') {
+    me = m.you || null; ls.set('tdcm_char', me || ''); hadInit = true; reclaim = 0;
+    clearTimeout(bannerT); $('banner').style.display = 'none';
+    S.char = m.character || null; S.tokens = m.tokens || []; S.objects = m.objects || []; S.lib = m.lib || [];
+    S.rolls = m.rolls || []; S.show = m.show || null; S.names = m.names || {}; S.gloss = m.gloss || [];
+    setView(m.view); setFog(m.fog); setTurns(m.turns, true);
+    $('start').hidden = true; $('app').hidden = false;
+    drawObjs(); drawToks(); fitCam(); render();
+    return;
+  }
+  if (m.type === 'tokens') { S.tokens = m.tokens || []; drawToks(); }
+  else if (m.type === 'objects') { S.objects = m.objects || []; drawObjs(); }
+  else if (m.type === 'lib') { S.lib = m.lib || []; drawObjs(); drawToks(); }
+  else if (m.type === 'view') setView(m.view);
+  else if (m.type === 'fog') setFog(m.fog);
+  else if (m.type === 'labels') { S.names = m.names || S.names; render(); }
+  else if (m.type === 'turns') setTurns(m.turns);
+  else if (m.type === 'gloss') {   // el DM reveló (u ocultó) entradas del glosario
+    const old = new Set((S.gloss || []).map(g => g.id));
+    S.gloss = m.gloss || [];
+    const fresh = S.gloss.filter(g => !old.has(g.id));
+    if (fresh.length) banner('📖 Nuevo en el glosario: ' + esc(fresh.slice(0, 3).map(g => g.term).join(', ')), 'turn', 5000);
+    if (tab === 'gloss') { const q = $('glq'); if (q && document.activeElement === q) $('gll').innerHTML = glossListHtml(); else render(); }
+  }
+  else if (m.type === 'char' && m.character) { S.char = m.character; render(); }
+  else if (m.type === 'rolls') {
+    S.rolls = m.rolls || []; S.show = m.show || null;
+    if (S.rolling && rkey(S.rolls[0]) !== S.rollTop) {
+      rollDone();
+      if (isMine(S.rolls[0]) && navigator.vibrate) navigator.vibrate(/Crítico|Pifia/.test(S.rolls[0].detail || '') ? [80, 60, 80] : 60);
+    }
+    if (S.show) banner(esc(S.show.label) + ' <b>' + esc(S.show.value) + '</b>', '', 3500);
+    render();
+  }
+}
+
+function choose(chars) {
+  const box = $('pick'), saved = ls.get('tdcm_char');
+  $('form').hidden = true; box.hidden = false; say('');
+  box.innerHTML = '<h3>¿Qué personaje vas a jugar?</h3>';
+  const add = (label, id, dis, cls, extra) => {
+    const b = document.createElement('button'); b.textContent = label; b.disabled = !!dis; if (cls) b.className = cls;
+    b.onclick = () => { box.hidden = true; say('Entrando…'); send({ type: 'claim', ...extra, charId: id }); };
+    box.appendChild(b);
+  };
+  chars.filter(c => c.id === saved && !c.taken).forEach(c => add('Continuar como ' + c.name, c.id, false, 'pri'));
+  const mk = document.createElement('button'); mk.textContent = '+ Crear mi personaje nuevo'; mk.className = 'ok';
+  mk.onclick = () => { box.hidden = true; say('Entrando…'); send({ type: 'claim', create: true }); };
+  box.appendChild(mk);
+  chars.filter(c => c.id !== saved || c.taken).forEach(c => add(c.name + (c.taken ? ' (ocupado)' : ''), c.id, c.taken));
+  add('Solo mirar (observador)', null, false);
+}
+
+/* ---------- Mapa ---------- */
+function setView(v) {
+  v = v || {}; S.view = v;
+  const g = TDC.cleanGrid(v.g);
+  if (g !== G) { G = g; $('grid').style.backgroundSize = G + 'px ' + G + 'px'; $('toks').style.setProperty('--k', TDC.tokScale(G)); if (S.tokens) drawToks(); }
+  $('grid').style.display = v.gridOn ? '' : 'none';
+  $('fog').style.display = v.fogOn && $('fog').src ? '' : 'none';
+  if (v.w && v.h) { W.w = v.w; W.h = v.h; }
+  const bg = v.bg || null;
+  if (bg !== lastBg) {
+    lastBg = bg;
+    $('world').style.backgroundImage = bg ? `url("${bg}")` : 'none';
+    if (bg && !(v.w && v.h)) { const im = new Image(); im.onload = () => { W.w = im.naturalWidth; W.h = im.naturalHeight; sizeWorld(); }; im.src = bg; }
+  }
+  sizeWorld();
+}
+function sizeWorld() {
+  const w = $('world'); w.style.width = W.w + 'px'; w.style.height = W.h + 'px';
+  $('fog').style.width = W.w + 'px'; $('fog').style.height = W.h + 'px'; applyCam();
+}
+function setFog(url) { if (!url) return; $('fog').src = url; $('fog').style.display = S.view.fogOn ? '' : 'none'; }
+function srcOf(o) { return PRESETS[o.src] || (S.lib.find(l => l.id === o.src) || {}).src || ''; }
+function drawObjs() {
+  $('objs').innerHTML = S.objects.map(o => `<div class="obj" style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px;transform:rotate(${o.rot || 0}deg);opacity:${o.op ?? 1}"><img src="${esc(srcOf(o))}" ${o.flip ? 'style="transform:scaleX(-1)"' : ''} draggable="false"></div>`).join('');
+}
+function curTokenId() {
+  const T = S.turns, e = T && T.on && T.list.find(x => x.id === T.curId);
+  return e && e.tokenId != null ? String(e.tokenId) : null;
+}
+function drawToks() {
+  const cur = curTokenId();
+  $('toks').innerHTML = S.tokens.map(t => {
+    const own = me && !t.isNpc && t.charId === me, rad = t.shape === 'circle' ? '50%' : '12px';
+    const bg = t.image ? `background-image:url('${esc(t.image)}')` : `background:${esc(t.color || '#7c3aed')}`;
+    return `<div class="tok${own ? ' own' : ''}${cur === String(t.id) ? ' turn' : ''}" data-id="${esc(t.id)}" style="left:${t.x}px;top:${t.y}px;width:${TDC.tokPx(t, G)}px;height:${TDC.tokPx(t, G)}px;border-radius:${rad}">
+      <div class="av" style="${bg};border-radius:${rad}">${t.image ? '' : esc(TDC.initials(t.name))}</div><div class="nm">${esc(t.name)}</div>${t.states && t.states.length ? `<div class="bd">${stIco(t.states)}</div>` : ''}</div>`;
+  }).join('');
+}
+function applyCam() {
+  const vw = $('stage').clientWidth, vh = $('stage').clientHeight, w = W.w * cam.s, h = W.h * cam.s;
+  cam.x = w <= vw ? (vw - w) / 2 : clamp(cam.x, vw - w, 0);
+  cam.y = h <= vh ? (vh - h) / 2 : clamp(cam.y, vh - h, 0);
+  $('world').style.transform = `translate(${cam.x}px,${cam.y}px) scale(${cam.s})`;
+}
+function centerOn(t) {
+  const half = TDC.tokPx(t, G) / 2;
+  cam.x = $('stage').clientWidth / 2 - (t.x + half) * cam.s; cam.y = $('stage').clientHeight / 2 - (t.y + half) * cam.s; applyCam();
+}
+function fitCam() {
+  const own = S.tokens.find(t => me && !t.isNpc && t.charId === me);
+  if (own) centerOn(own); else { cam.s = Math.min(1, $('stage').clientWidth / W.w); applyCam(); }
+}
+addEventListener('resize', applyCam);
+
+/* ---------- Gestos: arrastrar mapa, pellizcar, mover mi ficha ---------- */
+const stage = $('stage'), ptrs = new Map();
+let pan = null, drag = null, pinch = null;
+stage.addEventListener('pointerdown', e => {
+  stage.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 1) {
+    const el = e.target.closest('.tok.own'), t = el && S.tokens.find(x => String(x.id) === el.dataset.id);
+    if (t) drag = { t, el, sx: e.clientX, sy: e.clientY, ox: t.x, oy: t.y }; else pan = { sx: e.clientX, sy: e.clientY, cx: cam.x, cy: cam.y };
+  } else if (ptrs.size === 2) {
+    drag = pan = null;
+    const [a, b] = [...ptrs.values()], cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2 - stage.getBoundingClientRect().top;
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: cam.s, wx: (cx - cam.x) / cam.s, wy: (cy - cam.y) / cam.s };
+  }
+});
+stage.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && ptrs.size >= 2) {
+    const [a, b] = [...ptrs.values()], cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2 - stage.getBoundingClientRect().top;
+    cam.s = clamp(pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, 0.25, 2.5);
+    cam.x = cx - pinch.wx * cam.s; cam.y = cy - pinch.wy * cam.s; applyCam();
+  } else if (drag) {
+    drag.t.x = drag.ox + (e.clientX - drag.sx) / cam.s; drag.t.y = drag.oy + (e.clientY - drag.sy) / cam.s;
+    drag.el.style.left = drag.t.x + 'px'; drag.el.style.top = drag.t.y + 'px';
+  } else if (pan) { cam.x = pan.cx + e.clientX - pan.sx; cam.y = pan.cy + e.clientY - pan.sy; applyCam(); }
+});
+function endPtr(e) {
+  ptrs.delete(e.pointerId);
+  if (drag) {
+    const t = drag.t, sz = TDC.tokPx(t, G);
+    t.x = clamp(TDC.snapAxis(t.x, G, S.view.gridOn), 0, Math.max(0, W.w - sz));
+    t.y = clamp(TDC.snapAxis(t.y, G, S.view.gridOn), 0, Math.max(0, W.h - sz));
+    drag.el.style.left = t.x + 'px'; drag.el.style.top = t.y + 'px';
+    send({ type: 'move', tokens: [{ id: t.id, x: t.x, y: t.y }] }); drag = null;
+  }
+  if (ptrs.size < 2) pinch = null;
+  if (ptrs.size === 0) pan = null;
+}
+stage.addEventListener('pointerup', endPtr); stage.addEventListener('pointercancel', endPtr);
+stage.addEventListener('wheel', e => {
+  e.preventDefault();
+  const r = stage.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, wx = (px - cam.x) / cam.s, wy = (py - cam.y) / cam.s;
+  cam.s = clamp(cam.s * (e.deltaY < 0 ? 1.1 : 1 / 1.1), 0.25, 2.5); cam.x = px - wx * cam.s; cam.y = py - wy * cam.s; applyCam();
+}, { passive: false });
+
+/* ---------- Turnos ---------- */
+function setTurns(t, quiet) {
+  S.turns = t && typeof t === 'object' ? t : null;
+  const T = S.turns, cur = T && T.on ? T.list.find(x => x.id === T.curId) : null, id = cur ? cur.id : null;
+  if (!quiet && id && id !== lastCur && cur.charId && cur.charId === me) {
+    banner('¡Es tu turno!', 'turn', 6000); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {}
+    const tk = S.tokens.find(x => x.id === cur.tokenId); if (tk) centerOn(tk);
+  }
+  lastCur = id; drawToks(); render();
+}
+const myTurn = () => { const T = S.turns, e = T && T.on && T.list.find(x => x.id === T.curId); return !!(e && me && e.charId === me); };
+
+/* ---------- Avisos y paneles ---------- */
+function banner(html, cls, ms) {
+  const b = $('banner'); b.innerHTML = html; b.className = cls || ''; b.style.display = 'block';
+  clearTimeout(bannerT); if (ms) bannerT = setTimeout(() => { b.style.display = 'none'; }, ms);
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { tab = (tab === b.dataset.t && tab !== 'map') ? 'map' : b.dataset.t; render(); });
+// Tiradas: se pide al DM y se marca "Tirando…" hasta que llega una tirada nueva (o pasan 6 s)
+let rollT = null;
+const rkey = r => r ? [r.label, r.time, r.total, r.detail].join('|') : '';
+const isMine = r => !!(info && r && String(r.label || '').startsWith(info.name + ':'));
+function rollDone() { S.rolling = false; clearTimeout(rollT); }
+function roll(sides, label, m) {
+  if (S.rolling) return;
+  if (!conn || !conn.open) { banner('Sin conexión con el DM', 'bad', 2500); return; }
+  S.rolling = true; S.rollTop = rkey(S.rolls[0]);
+  send({ type: 'rollReq', sides, label, mod: m || 0 });
+  banner('🎲 Tirando ' + esc(label) + (m ? ' ' + esc(fm(m)) : '') + '…', '', 0);
+  rollT = setTimeout(() => { rollDone(); banner('El DM no respondió la tirada. Vuelve a intentarlo.', 'bad', 3500); if (tab === 'dice') render(); }, 6000);
+  if (tab === 'dice') render();
+}
+
+const skillMod = TDC.skillMod;
+const stIco = l => TDC.condIcons(l);
+const stTxt = TDC.condText;
+const statName = k => S.names[k] || STAT_ES[k];
+const skillStat = (c, s) => TDC.skillStatLabel(c, s, S.names);
+
+function render() {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  const p = $('panel'); p.hidden = tab === 'map';
+  if (tab === 'turns') p.innerHTML = turnsHtml(); else if (tab === 'sheet') { p.innerHTML = sheetHtml(); pcardCheck(); } else if (tab === 'dice') p.innerHTML = diceHtml(); else if (tab === 'gloss') p.innerHTML = glossHtml();
+}
+
+function turnsHtml() {
+  const T = S.turns;
+  if (!T || !T.list.length) return '<h3>Turnos</h3><div class="muted">El DM aún no ha organizado los turnos.</div>';
+  return `<h3>${T.on ? 'Ronda ' + T.round : 'Sin combate'}</h3>` +
+    (myTurn() ? '<button class="ok" style="width:100%;margin-bottom:10px" data-end>Terminar mi turno</button>' : '') +
+    T.list.map(e => `<div class="tn${T.on && e.id === T.curId ? ' cur' : ''}${e.out ? ' out' : ''}"><b class="i">${e.init === null ? '—' : esc(e.init)}</b><div style="flex:1"><b>${T.on && e.id === T.curId ? '▶ ' : ''}${esc(e.name)}</b> ${stIco((S.tokens.find(x => x.id === e.tokenId) || {}).states)}${e.note ? `<div class="muted">${esc(e.note)}</div>` : ''}</div></div>`).join('');
+}
+
+// Con un PNG transparente la figura se sale del marco de la carta
+const pcAlpha = new Map();
+function pcardCheck() {
+  const src = S.char && S.char.portrait;
+  if (!src || !document.querySelector('.pcard')) return;
+  const set = a => { const e = document.querySelector('.pcard'); if (e && S.char && S.char.portrait === src) e.classList.toggle('free', a); };
+  if (pcAlpha.has(src)) return set(pcAlpha.get(src));
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = 48; c.height = 64;
+    const g = c.getContext('2d'); g.drawImage(img, 0, 0, 48, 64);
+    const d = g.getImageData(0, 0, 48, 64).data; let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] < 200) n++;
+    pcAlpha.set(src, n > d.length / 4 * 0.02); set(pcAlpha.get(src));
+  };
+  img.src = src;
+}
+
+function sheetHtml() {
+  const c = S.char;
+  if (!c) return '<h3>Observador</h3><div class="muted">No tienes personaje. Vuelve a entrar y elige uno para ver tu hoja.</div>';
+  const attrs = (c.extraStats || []).filter(x => x.attr);
+  const sub = `${esc(c.class)} ${c.level ? '· nivel ' + esc(c.level) : ''}`;
+  const head = c.portrait
+    ? `<div class="pcard"><div class="pcard-f"></div><div class="pcard-a" style="background-image:url('${esc(c.portrait)}')"></div></div><div class="pplate"><div><b>${esc(c.name)}</b><span>${sub}</span></div></div>`
+    : `<h3>${esc(c.name)}</h3><div class="muted">${sub}</div>`;
+  return `${head}
+  <div class="row"><b>PV</b><button data-hp="-5">−5</button><button data-hp="-1">−1</button><b style="min-width:70px;text-align:center;font-size:20px">${c.hpCurrent} / ${c.hpMax}</b><button data-hp="1">+1</button><button data-hp="5">+5</button></div>
+  ${(c.states || []).length ? `<div class="muted" style="margin:6px 0">Estados: ${c.states.map(stTxt).join(' · ')}</div>` : ''}
+  <div class="row"><span>CA <b>${esc(c.ac)}</b> · Vel. <b>${esc(c.speed)}</b></span><button data-roll="Iniciativa" data-m="${mod(c.stats.Dex)}">Iniciativa ${fm(mod(c.stats.Dex))}</button></div>
+  <div class="grid6">${STATS.map(k => `<button class="stat" data-roll="${esc(statName(k))}" data-m="${mod(c.stats[k])}"><span class="muted">${esc(statName(k))}</span><b>${fm(mod(c.stats[k]))}</b><span class="muted">${c.stats[k]}</span></button>`).join('')}
+  ${attrs.map(x => `<button class="stat" data-roll="${esc(x.name || 'Atributo')}" data-m="${mod(x.value)}"><span class="muted">${esc(x.name || 'Atributo')}</span><b>${fm(mod(x.value))}</b><span class="muted">${esc(x.value)}</span></button>`).join('')}</div>
+  <h3 style="margin-top:14px">Habilidades</h3>${(c.skills || []).map(s => `<div class="row"><span>${s.prof ? '● ' : ''}${esc(s.name)} <span class="muted">${esc(skillStat(c, s))}</span></span><button data-roll="${esc(s.name)}" data-m="${skillMod(c, s)}">${fm(skillMod(c, s))}</button></div>`).join('') || '<div class="muted">Sin habilidades</div>'}
+  ${(c.spells || []).length ? '<h3 style="margin-top:14px">Conjuros</h3>' + c.spells.map(s => `<div class="row"><span>${esc(s.name)} <span class="muted">${s.level !== '' ? 'nv ' + esc(s.level) : ''}</span>${s.desc ? `<div class="muted">${esc(s.desc)}</div>` : ''}</span></div>`).join('') : ''}
+  ${(c.inventory || []).length ? '<h3 style="margin-top:14px">Inventario</h3>' + c.inventory.map(i => `<div class="row"><span>${esc(i.name)}</span><b>×${i.qty}</b></div>`).join('') : ''}
+  <div class="muted" style="margin-top:12px">Monedas: ${['pp', 'gp', 'sp', 'cp'].map(k => k.toUpperCase() + ' ' + ((c.coins || {})[k] || 0)).join(' · ')}</div>`;
+}
+
+/* ---------- Glosario (entradas que el DM ha revelado) ---------- */
+const GCAT = Object.fromEntries(TDC.BOOK_CATS);
+function glossListHtml() {
+  const q = (S.gq || '').trim().toLowerCase(), cat = S.gcat || 'all';
+  const L = (S.gloss || []).filter(g => (cat === 'all' || g.cat === cat) && (!q || (g.term + ' ' + g.text).toLowerCase().includes(q))).sort((a, b) => a.term.localeCompare(b.term, 'es'));
+  return L.length ? L.map(g => `<div class="gl"><b>${esc(g.term)}</b><span class="chip">${esc(GCAT[g.cat] || g.cat)}</span>${g.img ? `<img src="${esc(g.img)}" alt="">` : ''}<div class="gtx">${esc(g.text).replace(/\n/g, '<br>')}</div></div>`).join('') : '<div class="muted">Nada coincide con la búsqueda.</div>';
+}
+function glossHtml() {
+  if (!(S.gloss || []).length) return '<h3>Glosario</h3><div class="muted">El DM aún no ha revelado entradas. Cuando lo haga, aparecerán aquí.</div>';
+  return `<h3>Glosario</h3><input id="glq" placeholder="Buscar…" value="${esc(S.gq || '')}" autocomplete="off">
+    <select id="glc"><option value="all">Todas las categorías</option>${Object.keys(GCAT).map(k => `<option value="${k}"${S.gcat === k ? ' selected' : ''}>${GCAT[k]}</option>`).join('')}</select>
+    <div id="gll" style="margin-top:8px">${glossListHtml()}</div>`;
+}
+$('panel').addEventListener('input', e => { if (e.target.id === 'glq') { S.gq = e.target.value; $('gll').innerHTML = glossListHtml(); } });
+$('panel').addEventListener('change', e => { if (e.target.id === 'glc') { S.gcat = e.target.value; $('gll').innerHTML = glossListHtml(); } });
+
+function diceHtml() {
+  const s = S.show, mine = S.rolls.find(isMine), m = S.mod || 0, ms = m ? fm(m) : '';
+  return `<div class="muted" style="text-align:center">${s ? esc(s.label) : 'Aún no hay tiradas'}</div><div class="big">${s ? esc(s.value) : '—'}</div>
+  ${mine ? `<div class="mine"><span>Tu última tirada<div class="muted">${esc(String(mine.label).slice(info.name.length + 1).trim())}${mine.detail ? ' · ' + esc(mine.detail) : ''}</div></span><b>${esc(mine.total)}</b></div>` : ''}
+  <div${S.rolling ? ' class="busy"' : ''}>
+    <button class="d20" data-d="20">${S.rolling ? '<small>Tirando…</small>' : 'd20' + (ms ? `<small>${ms}</small>` : '')}</button>
+    <div class="modrow"><button data-mod="-1">−</button><button class="mv" data-mod="0">${m ? ms : '±0'}</button><button data-mod="1">+</button></div>
+    <div class="dice">${[4, 6, 8, 10, 12, 100].map(n => `<button data-d="${n}">d${n}${ms ? ` <span class="muted">${ms}</span>` : ''}</button>`).join('')}</div>
+  </div>
+  <div class="muted" style="margin:8px 0">El modificador se suma a estos dados (toca el número para volver a 0). El DM tira por ti y todos ven el resultado.</div>
+  ${S.rolls.slice(0, 10).map(r => `<div class="row"><span>${esc(r.label)}<div class="muted">${esc(r.time)}${r.detail ? ' · ' + esc(r.detail) : ''}</div></span><b style="font-size:20px">${esc(r.total)}</b></div>`).join('')}`;
+}
+
+$('panel').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.end !== undefined) send({ type: 'endTurn' });
+  else if (b.dataset.roll) roll(20, b.dataset.roll, Number(b.dataset.m));
+  else if (b.dataset.mod !== undefined) { S.mod = b.dataset.mod === '0' ? 0 : clamp((S.mod || 0) + Number(b.dataset.mod), -20, 20); render(); }
+  else if (b.dataset.d) roll(Number(b.dataset.d), 'd' + b.dataset.d, S.mod || 0);
+  else if (b.dataset.hp && S.char) {
+    const c = S.char; c.hpCurrent = clamp(c.hpCurrent + Number(b.dataset.hp), 0, c.hpMax); render();
+    clearTimeout(hpT); hpT = setTimeout(() => send({ type: 'char', character: c }), 400);   // junta varios toques en un solo aviso
+  }
+});
+</script>
+</body>
+</html>
